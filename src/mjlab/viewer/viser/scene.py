@@ -135,9 +135,16 @@ class ViserMujocoScene(DebugVisualizer):
   ] = field(default_factory=list, init=False)
   _arrow_shaft_handle: viser.BatchedMeshHandle | None = field(default=None, init=False)
   _arrow_head_handle: viser.BatchedMeshHandle | None = field(default=None, init=False)
-  _queued_ghosts: list[tuple[np.ndarray, mujoco.MjModel, float, str]] = field(
-    default_factory=list, init=False
-  )
+  _queued_ghosts: list[
+    tuple[
+      np.ndarray,
+      mujoco.MjModel,
+      np.ndarray | None,
+      np.ndarray | None,
+      float,
+      str,
+    ]
+  ] = field(default_factory=list, init=False)
   _ghost_handles_batched: dict[tuple[int, int], viser.BatchedMeshHandle] = field(
     default_factory=dict, init=False
   )
@@ -488,10 +495,10 @@ class ViserMujocoScene(DebugVisualizer):
     if env_idx is None:
       env_idx = self.env_idx
 
-    body_xpos = wp_data.xpos.numpy()
-    body_xmat = wp_data.xmat.numpy()
-    mocap_pos = wp_data.mocap_pos.numpy()
-    mocap_quat = wp_data.mocap_quat.numpy()
+    body_xpos = wp_data.xpos.cpu().numpy()
+    body_xmat = wp_data.xmat.cpu().numpy()
+    mocap_pos = wp_data.mocap_pos.cpu().numpy()
+    mocap_quat = wp_data.mocap_quat.cpu().numpy()
     scene_offset = np.zeros(3)
     if self.camera_tracking_enabled and self._tracked_body_id is not None:
       tracked_pos = body_xpos[env_idx, self._tracked_body_id, :].copy()
@@ -499,8 +506,8 @@ class ViserMujocoScene(DebugVisualizer):
 
     contacts = None
     if self.show_contact_points or self.show_contact_forces:
-      self.mj_data.qpos[:] = wp_data.qpos.numpy()[env_idx]
-      self.mj_data.qvel[:] = wp_data.qvel.numpy()[env_idx]
+      self.mj_data.qpos[:] = wp_data.qpos.cpu().numpy()[env_idx]
+      self.mj_data.qvel[:] = wp_data.qvel.cpu().numpy()[env_idx]
       self.mj_data.mocap_pos[:] = mocap_pos[env_idx]
       self.mj_data.mocap_quat[:] = mocap_quat[env_idx]
       mujoco.mj_forward(self.mj_model, self.mj_data)
@@ -1055,6 +1062,8 @@ class ViserMujocoScene(DebugVisualizer):
     self,
     qpos: np.ndarray | torch.Tensor,
     model: mujoco.MjModel,
+    mocap_pos: np.ndarray | torch.Tensor | None = None,
+    mocap_quat: np.ndarray | torch.Tensor | None = None,
     alpha: float = 0.5,
     label: str | None = None,
   ) -> None:
@@ -1066,6 +1075,8 @@ class ViserMujocoScene(DebugVisualizer):
     Args:
       qpos: Joint positions for the ghost pose
       model: MuJoCo model with pre-configured appearance (geom_rgba for colors)
+      mocap_pos: Optional mocap position(s) for fixed-base entities
+      mocap_quat: Optional mocap quaternion(s) for fixed-base entities
       alpha: Transparency override
       label: Optional label for this ghost (used to differentiate multiple ghosts)
     """
@@ -1074,12 +1085,25 @@ class ViserMujocoScene(DebugVisualizer):
 
     if isinstance(qpos, torch.Tensor):
       qpos = qpos.cpu().numpy()
+    if isinstance(mocap_pos, torch.Tensor):
+      mocap_pos = mocap_pos.cpu().numpy()
+    if isinstance(mocap_quat, torch.Tensor):
+      mocap_quat = mocap_quat.cpu().numpy()
 
     # Use label to differentiate ghosts (e.g., for different environments)
     ghost_label = label if label else f"env_{self.env_idx}"
 
     # Queue the ghost for batched rendering
-    self._queued_ghosts.append((qpos.copy(), model, alpha, ghost_label))
+    self._queued_ghosts.append(
+      (
+        qpos.copy(),
+        model,
+        np.asarray(mocap_pos).copy() if mocap_pos is not None else None,
+        np.asarray(mocap_quat).copy() if mocap_quat is not None else None,
+        alpha,
+        ghost_label,
+      )
+    )
 
   @override
   def add_frame(
@@ -1565,12 +1589,22 @@ class ViserMujocoScene(DebugVisualizer):
     ] = {}  # (model_hash, body_id) -> [(position, wxyz, color_uint8), ...]
     alpha_by_model: dict[int, float] = {}  # model_hash -> alpha
 
-    for qpos, model, alpha, _label in self._queued_ghosts:
+    for qpos, model, mocap_pos, mocap_quat, alpha, _label in self._queued_ghosts:
       model_hash = hash((model.ngeom, model.nbody, model.nq))
       alpha_by_model[model_hash] = alpha
 
       # Forward kinematics
       self._viz_data.qpos[:] = qpos
+      if mocap_pos is not None and model.nmocap > 0:
+        if mocap_pos.ndim == 1:
+          self._viz_data.mocap_pos[0] = mocap_pos
+        else:
+          self._viz_data.mocap_pos[:] = mocap_pos
+      if mocap_quat is not None and model.nmocap > 0:
+        if mocap_quat.ndim == 1:
+          self._viz_data.mocap_quat[0] = mocap_quat
+        else:
+          self._viz_data.mocap_quat[:] = mocap_quat
       mujoco.mj_forward(model, self._viz_data)
 
       # Group geoms by body (to get color and determine which bodies have visual geoms)
