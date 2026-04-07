@@ -29,7 +29,7 @@ def get_assets(meshdir: str) -> dict[str, bytes]:
 
 def get_spec() -> mujoco.MjSpec:
   spec = mujoco.MjSpec.from_file(str(GO2_XML))
-  # spec.assets = get_assets(spec.meshdir)
+  spec.assets = get_assets(spec.meshdir)
   return spec
 
 
