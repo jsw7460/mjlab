@@ -8,6 +8,17 @@ Upcoming version (not yet released)
 Added
 ^^^^^
 
+- Added :class:`~mjlab.managers.RecorderManager` for logging observations,
+  actions, or arbitrary environment data during rollouts. Implement a
+  :class:`~mjlab.managers.RecorderTerm` subclass and register it in the
+  ``recorders`` dict on ``ManagerBasedRlEnvCfg``. The manager provides
+  ``record_pre_reset``, ``record_post_reset``, and ``record_post_step``
+  lifecycle hooks with no opinion on how data is stored.
+- Added :func:`~mjlab.envs.mdp.curriculums.termination_curriculum` for
+  scheduling changes to termination term parameters during training,
+  matching the existing ``reward_curriculum`` pattern. Both now share a
+  single internal engine with init-time validation of stage ordering,
+  field existence, and param keys.
 - Added ``reduce`` field to ``MetricsTermCfg``. Setting ``reduce="last"``
   reports the value from the final step of the episode rather than the
   episode mean, which is useful for binary success metrics.
@@ -94,6 +105,13 @@ Changed
 Fixed
 ^^^^^
 
+- Fixed ghost geom filtering in the Viser viewer. Ghost geoms were selected
+  by collision flags, so collision-disabled robot geoms appeared as ghosts.
+  The viewer now uses visual alpha to determine which geoms to render.
+- Scene now warns when an attached entity or terrain spec has non-default
+  ``<option>`` fields (e.g. ``<flag contact="disable"/>``), which are
+  silently dropped by ``MjSpec.attach()``. Use ``MujocoCfg`` to set
+  simulation options instead (:issue:`885`).
 - Fixed ``SceneEntityCfg`` names and IDs ordering mismatch when
   ``preserve_order=False`` (:issue:`876`). Contribution by @jsw7460.
 - Fixed ONNX export path resolution in the velocity, manipulation, and
