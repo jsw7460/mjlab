@@ -8,6 +8,15 @@ Upcoming version (not yet released)
 Added
 ^^^^^
 
+- Added ``--log-root`` CLI option to ``train``, ``play``, and ``evaluate``
+  scripts for choosing where training logs are stored. Defaults to
+  ``logs/rsl_rl`` (unchanged behavior). Useful for directing outputs to a
+  scratch disk or shared mount.
+- ``RewardManager``, ``TerminationManager``, and ``MetricsManager`` now
+  validate that every term function returns a tensor of shape
+  ``(num_envs,)`` when evaluated, raising a clear ``ValueError``
+  naming the offending term instead of silently broadcasting or crashing
+  with an opaque error later during training.
 - Added ``ContactSensor.primary_names`` property to expose the resolved
   primary names in the order they appear along the per-contact axis of the
   output tensors. This makes it possible to map a contact-data column back
@@ -16,6 +25,14 @@ Added
 Changed
 ^^^^^^^
 
+- Bumped ``rsl-rl-lib`` from 5.0.1 to 5.2.0. This brings ``torch.compile`` support for
+  PPO and Distillation, and optional std clamping and constant std in
+  ``GaussianDistribution``. No code changes required on the mjlab side.
+- ``TerrainEntityCfg`` debug visualization sites (environment origins,
+  terrain origins, flat patches) are now off by default. Set
+  ``debug_vis=True`` to re-enable them. The sites inflated ``nsite`` and
+  caused a measurable slowdown in the per-step ``site_local_to_global``
+  kernel (:issue:`942`).
 - Task package load failures during ``mjlab`` import now print the full
   traceback (and the entry point's module path) to ``stderr`` instead of
   just the exception message, making it easier to pinpoint the source of
