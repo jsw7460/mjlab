@@ -1,5 +1,7 @@
 """MjSpec utils."""
 
+from __future__ import annotations
+
 import shutil
 import xml.etree.ElementTree as ET
 import zipfile
@@ -431,3 +433,35 @@ def create_muscle_actuator(
   actuator.ctrlrange[:] = np.array([0.0, 1.0])
 
   return actuator
+
+
+# ---------------------------------------------------------------------------
+# Mesh variant helpers
+# ---------------------------------------------------------------------------
+
+
+def copy_mesh_data(src: mujoco.MjsMesh, dst: mujoco.MjsMesh) -> None:
+  """Copy mesh geometry from *src* to *dst*.
+
+  Copies vertex/face data, file path, scale, reference frame, and smoothing settings.
+  The ``name`` field is NOT copied; set it on *dst* before calling.
+  """
+  assert dst.name, "dst.name must be set before copy_mesh_data."
+  if src.file:
+    dst.file = src.file
+  if len(src.uservert) > 0:
+    dst.uservert = src.uservert
+  if len(src.userface) > 0:
+    dst.userface = src.userface
+  if len(src.usernormal) > 0:
+    dst.usernormal = src.usernormal
+  if len(src.usertexcoord) > 0:
+    dst.usertexcoord = src.usertexcoord
+  if len(src.userfacenormal) > 0:
+    dst.userfacenormal = src.userfacenormal
+  if len(src.userfacetexcoord) > 0:
+    dst.userfacetexcoord = src.userfacetexcoord
+  dst.scale[:] = src.scale
+  dst.refpos[:] = src.refpos
+  dst.refquat[:] = src.refquat
+  dst.smoothnormal = src.smoothnormal
