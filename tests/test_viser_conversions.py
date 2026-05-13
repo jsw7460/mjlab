@@ -17,10 +17,20 @@ from mjlab.viewer.viser import (
 def load_robot_model(robot_name: str) -> mujoco.MjModel:
   """Load a robot model from the asset zoo."""
   base_path = Path(__file__).parent.parent / "src/mjlab/asset_zoo/robots"
+  # G1 was moved to JaxRLWorld/rlworld/assets/g1/ (single source of truth
+  # across mjlab / Newton / Genesis). See g1_constants.G1_XML.
+  jaxrlworld_g1 = (
+    Path(__file__).parent.parent.parent
+    / "JaxRLWorld"
+    / "rlworld"
+    / "assets"
+    / "g1"
+    / "g1.xml"
+  )
 
   # Map robot names to their XML files.
   robot_paths = {
-    "unitree_g1": base_path / "unitree_g1/xmls/g1.xml",
+    "unitree_g1": jaxrlworld_g1,
     "unitree_go1": base_path / "unitree_go1/xmls/go1.xml",
   }
 

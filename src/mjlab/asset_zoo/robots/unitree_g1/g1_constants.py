@@ -17,10 +17,19 @@ from mjlab.utils.spec_config import CollisionCfg
 # MJCF and assets.
 ##
 
+# Single source of truth lives in JaxRLWorld (monorepo layout:
+# SimForge/Mjlab/, SimForge/JaxRLWorld/). The G1 MJCF and STL meshes were
+# moved out of mjlab to JaxRLWorld/rlworld/assets/g1/ so all simulators
+# (mjlab / Newton / Genesis) load the same asset.
 G1_XML: Path = (
-  MJLAB_SRC_PATH / "asset_zoo" / "robots" / "unitree_g1" / "xmls" / "g1.xml"
+  MJLAB_SRC_PATH.parent.parent.parent
+  / "JaxRLWorld"
+  / "rlworld"
+  / "assets"
+  / "g1"
+  / "g1.xml"
 )
-assert G1_XML.exists()
+assert G1_XML.exists(), f"G1 MJCF not found at {G1_XML}"
 
 
 def get_spec() -> mujoco.MjSpec:
