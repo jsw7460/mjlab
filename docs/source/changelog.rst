@@ -8,6 +8,12 @@ Upcoming version (not yet released)
 Added
 ^^^^^
 
+- Added ``mdp.projected_gravity_from_sensor``, an observation that derives
+  projected gravity from a ``framezaxis`` up-vector sensor (negated) rather
+  than from the root body orientation. Unlike ``mdp.projected_gravity``, it
+  reflects the sensor's site frame, so it can observe IMU mounting domain
+  randomization (e.g. via ``dr.site_quat``). Go1 and G1 ship an
+  ``imu_upvector`` sensor for this.
 - Added ``DebugVisualizer.add_box`` for drawing an axis-oriented box
   primitive, mirroring ``add_ellipsoid``. Supported by both the native
   and Viser viewers. ``size`` is the box half-extents (:issue:`992`).
@@ -48,6 +54,17 @@ Added
 Changed
 ^^^^^^^
 
+- ``Entity`` now raises a clear error at construction when its spec contains
+  more than one freejoint. An entity models a single system rooted at one
+  body, so it has at most one freejoint; a second one was previously accepted
+  silently and only surfaced later as a cryptic shape mismatch when writing
+  root state. Model each detached floating body as its own entry in
+  ``SceneCfg.entities`` instead.
+- Changed ``compute_root_relative_mpkpe`` to re-anchor the reference to the
+  robot's root each step, removing yaw drift as well as translation so it
+  measures intrinsic body pose error.
+- Changed ``compute_joint_velocity_error`` from an L2 norm to a per-joint
+  RMS, so it no longer scales with the number of joints.
 - Bumped ``mujoco`` to 3.8 and ``mujoco-warp`` to 3.8.0. The ``multiccd``
   enable flag was removed in mujoco 3.8 (it became default-on), so configs
   that listed ``"multiccd"`` in ``MujocoCfg.enableflags`` need to drop it.
@@ -91,11 +108,22 @@ Changed
 Fixed
 ^^^^^
 
+- Fixed the tracking ``evaluate`` script scoring each metric against the
+  next motion frame; the reference is now snapshotted before each step to
+  match the reward.
+- Fixed the tracking end-effector metrics silently scoring zero for an
+  unknown body name; they now raise ``ValueError``.
+- Fixed ``compute_mpkpe`` measuring root-relative instead of global error;
+  it now uses the global reference ``body_pos_w`` (:issue:`1006`).
 - Fixed heavy flicker in offscreen training videos on rough-terrain tasks.
   The renderer recomputed its context "neighbor" robots every frame from
   ``env_origins``, which the terrain curriculum mutates on reset, so the
   neighbor set kept changing and robots popped in and out. The neighbor
   set is now computed once and cached (:issue:`979`).
+- Fixed command delay only applying to an actuator's position target.
+  ``IdealPdActuator`` and ``DcMotorActuator`` also use velocity and effort, which
+  arrived undelayed and out of sync; all command targets now share one delay.
+  Zero-reference setups are unaffected.
 - Fixed duplicate random seeds across nodes in multi-node training. The
   per-process seed offset in ``scripts/train.py`` now uses the global
   ``RANK`` instead of ``LOCAL_RANK``. Contribution by @bd-pdomanico.
