@@ -8,6 +8,28 @@ Upcoming version (not yet released)
 Added
 ^^^^^
 
+- Added ``BuiltinDcMotorActuator``, a native MuJoCo ``<dcmotor>`` wrapper.
+  Supports voltage / position / velocity input modes with back-EMF,
+  configurable motor constants, and optional integral, slew, inductance,
+  thermal, LuGre, and cogging extensions.
+
+Version 1.4.0 (May 26, 2026)
+----------------------------
+
+Added
+^^^^^
+
+- Added ``BuiltinPdActuator``, the implicit-integration version of
+  ``IdealPdActuator``. Same interface (position + velocity targets,
+  kp/kd gains), but expresses the PD as native MuJoCo ``<position>``
+  and ``<velocity>`` elements so the ``implicit`` / ``implicitfast``
+  integrators include the kp/kd derivatives in their velocity update.
+  The actuator stays stable at gain/timestep combinations where
+  explicit Python PD would diverge, which matters when you want to
+  run a real motor's stiff on-board PD gains in sim. ``effort_limit``
+  is enforced as a sum-clamp on the two PD terms via
+  ``jnt_actfrcrange`` (or ``tendon_actfrcrange``). Supported by
+  ``dr.pd_gains`` and ``dr.effort_limits``.
 - Added ``mdp.projected_gravity_from_sensor``, an observation that derives
   projected gravity from a ``framezaxis`` up-vector sensor (negated) rather
   than from the root body orientation. Unlike ``mdp.projected_gravity``, it
@@ -108,6 +130,12 @@ Changed
 Fixed
 ^^^^^
 
+- Removed use of deprecated ``warp-lang`` symbols (``wp.context.runtime``
+  and ``wp.context.Device``) that were dropped in newer ``warp-lang``
+  releases, causing ``AttributeError: module 'warp' has no attribute
+  'context'`` at import/runtime. mjlab now uses
+  ``wp.get_cuda_driver_version()`` and ``wp.Device`` instead
+  (:issue:`967`). Contribution by @rdeits.
 - Fixed the tracking ``evaluate`` script scoring each metric against the
   next motion frame; the reference is now snapshotted before each step to
   match the reward.
