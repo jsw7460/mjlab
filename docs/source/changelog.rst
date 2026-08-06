@@ -5,25 +5,87 @@ Changelog
 Upcoming version (not yet released)
 -----------------------------------
 
+.. admonition:: Breaking API changes
+   :class: attention
+
+   - ``CollisionCfg`` now requires ``contype``, ``conaffinity``, ``condim``,
+     and ``priority`` to be explicit instead of silently defaulting to
+     MuJoCo's values, and dict values for these fields must cover every
+     matched geom (add a catch-all ``".*"`` entry).
+   - ``CommandTerm._update_command`` now takes an ``env_ids`` argument:
+     ``None`` on the regular per-step update and the reset environment ids
+     when called from ``reset()``. Custom command terms must add the
+     parameter (construction raises a ``TypeError`` with migration
+     instructions otherwise) and scope any per-step state advance, such as
+     a motion frame index, to ``env_ids``.
+
+.. admonition:: Highlights
+   :class: note
+
+   - Upgraded to MuJoCo and MuJoCo Warp 3.11.
+   - Upgraded ``rsl-rl-lib`` to 5.4.2.
+
 Added
 ^^^^^
 
+- Added ``GeomCfg``, exposed as the ``geoms`` field on ``EntityCfg``, a spec
+  editor that matches geoms by name and patches their attributes. Supports
+  ``group`` (so a geom can collide without being drawn) and all collision
+  attributes; unset attributes are left untouched. Contribution by
+  @bd-pmorais.
 - Added ``diffuse``, ``specular``, ``ambient``, ``active``, and
   ``attenuation`` fields to ``LightCfg`` for configuring light color and
   falloff. Contribution by @bd-pmorais.
+- Added ``random``, ``file``, ``cubefiles``, ``gridsize``, ``gridlayout``,
+  ``nchannel``, ``hflip``, and ``vflip`` fields to ``TextureCfg``, so textures
+  can be loaded from image files instead of only built-in patterns.
+  ``width`` and ``height`` are now optional, since file-based textures take
+  their size from the image. Contribution by @bd-pmorais.
 - Added light domain randomization functions: ``dr.light_diffuse``,
   ``dr.light_specular``, ``dr.light_ambient``, ``dr.light_attenuation``,
   ``dr.light_cutoff``, and ``dr.light_exponent``. Contribution by @bd-pmorais.
+- Added ``reduce="sum"`` to ``MetricsTermCfg`` for reporting the accumulated
+  episode total (e.g. episodic reward, total distance traveled) instead of a
+  per-step average. Contribution by @bd-mlutter
+- Added ``dr.mat_texid`` to randomize which texture fills a given
+  ``mjtTextureRole`` slot (RGB by default) of each selected material,
+  sampling uniformly from ``asset_cfg.texture_names``. Contribution by
+  @bd-pmorais.
+
+.. figure:: _static/changelog/mat_texid_dr.gif
+   :width: 30%
 
 Changed
 ^^^^^^^
 
+- Bumped ``mujoco`` and ``mujoco-warp`` from 3.10 to 3.11, and regenerated the
+  bundled MuJoCo type stubs.
+- Bumped ``rsl-rl-lib`` from 5.4.0 to 5.4.2.
+- ``CollisionCfg`` and ``GeomCfg`` now share one write path, and mjlab warns
+  when a ``GeomCfg`` collision patch is overwritten by a ``CollisionCfg``.
 - Changed the default MuJoCo Warp render background to solid black
   (``0, 0, 0, 1``), matching MuJoCo's native renderer. Contribution by
   @bd-pmorais.
 
 Fixed
 ^^^^^
+
+- ``reset(env_ids=...)`` no longer appends a frame to every env's observation
+  history and delay buffers; only the reset envs receive their post-reset
+  frame. Previously, each manual partial reset gave the other envs a duplicate
+  frame, shortening their effective history and drifting their delay
+  schedules.
+- ``reset(env_ids=...)`` no longer advances stateful commands in
+  environments that were not reset. Previously a partial reset gave every
+  environment an extra command update, so with ``auto_reset=False`` a
+  ``MotionCommand`` reference motion played at twice the normal speed and
+  could teleport non-reset robots via the wraparound resample. The adaptive
+  sampling EMA also no longer folds on resets, matching auto-reset
+  training dynamics. :issue:`1138`
+- ``RayCastSensorCfg.include_geom_groups`` now raises on values outside
+  ``[0, mjNGROUP)`` instead of silently excluding every geom.
+- Geoms with a negative group no longer pick up group 5's visibility toggle in
+  the Viser viewer.
 
 Version 1.5.3 (July 22, 2026)
 -----------------------------
