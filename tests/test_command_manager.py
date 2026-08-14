@@ -110,6 +110,10 @@ def _make_motion_command_stub(time_steps, total, sampling_mode="uniform"):
   cmd.cfg.adaptive_alpha = 0.5
   cmd.bin_failed_count = torch.tensor([1.0, 1.0])
   cmd._current_bin_failed = torch.tensor([4.0, 4.0])
+  cmd._pending_forward = False
+  cmd._resample_command = Mock(
+    side_effect=lambda ids: setattr(cmd, "_pending_forward", True)
+  )
   return cmd
 
 
@@ -146,3 +150,30 @@ def test_motion_command_ema_folds_only_on_step_update():
   # Per-step update: EMA folds the counts and clears them.
   assert cmd.bin_failed_count.tolist() == [2.5, 2.5]
   assert cmd._current_bin_failed.tolist() == [0.0, 0.0]
+
+
+def test_motion_command_gui_reset_forwards_before_pose_update():
+  """apply_gui_reset must refresh kinematics between the state write and
+  update_relative_body_poses (viewer forwards only after it returns)."""
+  calls = []
+  cmd = Mock()
+  cmd._scrubber_handles = (Mock(value=5),)
+  cmd.reset_to_frame = lambda ids, frame: calls.append("reset_to_frame")
+  cmd._env.sim.forward = lambda: calls.append("forward")
+  cmd.update_relative_body_poses = lambda: calls.append("update_poses")
+
+  assert MotionCommand.apply_gui_reset(cmd, torch.tensor([0])) is True
+  assert calls == ["reset_to_frame", "forward", "update_poses"]
+
+
+def test_motion_command_timer_resample_triggers_forward():
+  """A timer-expiry resample (flag set before _update_command) forwards."""
+  cmd = _make_motion_command_stub([2, 5], total=100)
+  cmd._pending_forward = True  # As set by a compute-path _resample_command.
+  MotionCommand._update_command(cmd, env_ids=None)
+  cmd._env.sim.forward.assert_called_once()
+  assert cmd._pending_forward is False
+
+  cmd._env.sim.forward.reset_mock()
+  MotionCommand._update_command(cmd, env_ids=None)
+  cmd._env.sim.forward.assert_not_called()

@@ -5,6 +5,9 @@ Changelog
 Upcoming version (not yet released)
 -----------------------------------
 
+Version 1.6.0 (August 8, 2026)
+------------------------------
+
 .. admonition:: Breaking API changes
    :class: attention
 
@@ -18,6 +21,8 @@ Upcoming version (not yet released)
      parameter (construction raises a ``TypeError`` with migration
      instructions otherwise) and scope any per-step state advance, such as
      a motion frame index, to ``env_ids``.
+   - ``ViewerConfig`` is now keyword-only; positional construction no
+     longer works.
 
 .. admonition:: Highlights
    :class: note
@@ -47,6 +52,10 @@ Added
 - Added ``reduce="sum"`` to ``MetricsTermCfg`` for reporting the accumulated
   episode total (e.g. episodic reward, total distance traveled) instead of a
   per-step average. Contribution by @bd-mlutter
+- Added ``ViewerConfig.geom_group`` and ``ViewerConfig.site_group`` to
+  control which geom and site visualization groups the offscreen renderer
+  draws. Defaults match MuJoCo's (groups 0 through 2), so rendering is
+  unchanged unless configured. Contribution by @bd-mlutter.
 - Added ``dr.mat_texid`` to randomize which texture fills a given
   ``mjtTextureRole`` slot (RGB by default) of each selected material,
   sampling uniformly from ``asset_cfg.texture_names``. Contribution by
@@ -66,10 +75,45 @@ Changed
 - Changed the default MuJoCo Warp render background to solid black
   (``0, 0, 0, 1``), matching MuJoCo's native renderer. Contribution by
   @bd-pmorais.
+- The offscreen renderer now works on a copy of the ``MjModel``, so its
+  render-only tweaks (extent, shadows, reflections, offscreen size) no
+  longer leak into the shared model. Contribution by @bd-mlutter.
+- ``ViewerConfig`` is now keyword-only, with fields grouped and documented.
+  Contribution by @bd-mlutter.
+- ``ViewerConfig.fovy`` now also applies to the ``ASSET_ROOT`` and
+  ``ASSET_BODY`` tracking cameras instead of being silently ignored; leave
+  it at ``None`` (the default) to keep the model value. Contribution by
+  @bd-mlutter.
+- ``auto_reset`` and an explicit ``reset()`` now leave identical command and
+  event timer state (:issue:`1133`).
 
 Fixed
 ^^^^^
 
+- The Viser motion scrubber's Start Here button no longer computes relative
+  body poses from stale pre-scrub kinematics, which could spuriously
+  terminate the episode on the next step.
+- Mid-episode lifting command resamples now refresh kinematics and the
+  multi-cube reward cache, so observations and rewards no longer see
+  pre-teleport object positions for one step after each resample.
+- ``UniformVelocityCommand``'s ``init_velocity_prob`` path no longer writes
+  the previous episode's terminal pose back into the sim on reset. It read
+  derived kinematics before ``forward()`` ran and rewrote the root pose; it
+  now reads only qpos for the orientation and writes only the root velocity.
+- ``init_velocity_prob`` now applies on episode reset only. A mid-episode
+  timer resample used to also teleport the root velocity, which ran after
+  ``step()``'s forward and left velocity observations stale for one step.
+- ``Entity.set_joint_position_target`` and its velocity/effort/tendon/site
+  siblings now select the outer product when both ``env_ids`` and the element
+  ids are tensors, instead of pairing them elementwise.
+- ``MotionCommand`` now refreshes kinematics after a timer-expiry resample
+  (finite ``resampling_time_range``), matching its wraparound path.
+- ``CircularBuffer`` lag retrieval now clamps to the oldest retained frame;
+  a lag beyond the buffer length used to wrap around to a newer frame.
+- Camera sensor caches are now invalidated after ``sense()``, so a
+  pre-sense read with ``clone_data=True`` can no longer pin the previous
+  step's frame into the observations (mirrors the raycast fix for
+  :issue:`998`).
 - ``reset(env_ids=...)`` no longer appends a frame to every env's observation
   history and delay buffers; only the reset envs receive their post-reset
   frame. Previously, each manual partial reset gave the other envs a duplicate
