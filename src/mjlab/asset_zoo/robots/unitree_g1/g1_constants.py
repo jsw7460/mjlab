@@ -19,12 +19,12 @@ from mjlab.utils.spec_config import CollisionCfg
 
 # Single source of truth lives in JaxRLWorld (monorepo layout:
 # SimForge/Mjlab/, SimForge/JaxRLWorld/). The G1 MJCF and STL meshes were
-# moved out of mjlab to JaxRLWorld/rlworld/assets/g1/ so all simulators
+# moved out of mjlab to JaxRLWorld/jaxrlworld/assets/g1/ so all simulators
 # (mjlab / Newton / Genesis) load the same asset.
 G1_XML: Path = (
   MJLAB_SRC_PATH.parent.parent.parent
   / "JaxRLWorld"
-  / "rlworld"
+  / "jaxrlworld"
   / "assets"
   / "g1"
   / "g1.xml"
