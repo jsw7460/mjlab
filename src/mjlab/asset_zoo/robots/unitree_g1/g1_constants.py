@@ -17,19 +17,27 @@ from mjlab.utils.spec_config import CollisionCfg
 # MJCF and assets.
 ##
 
-# Single source of truth lives in JaxRLWorld (monorepo layout:
-# SimForge/Mjlab/, SimForge/JaxRLWorld/). The G1 MJCF and STL meshes were
+# Single source of truth lives in JaxRLWorld: the G1 MJCF and STL meshes were
 # moved out of mjlab to JaxRLWorld/jaxrlworld/assets/g1/ so all simulators
-# (mjlab / Newton / Genesis) load the same asset.
-G1_XML: Path = (
-  MJLAB_SRC_PATH.parent.parent.parent
-  / "JaxRLWorld"
-  / "jaxrlworld"
-  / "assets"
-  / "g1"
-  / "g1.xml"
-)
-assert G1_XML.exists(), f"G1 MJCF not found at {G1_XML}"
+# (mjlab / Newton / Genesis) load the same asset. This checkout sits somewhere
+# inside the SimForge monorepo beside JaxRLWorld/; the nearest ancestor that
+# holds the asset is used, so the path does not depend on how deep mjlab is
+# nested (it moved under SimForge/vendor/ once already).
+_G1_XML_IN_MONOREPO = Path("JaxRLWorld") / "jaxrlworld" / "assets" / "g1" / "g1.xml"
+
+
+def _find_monorepo_g1_xml() -> Path:
+  for ancestor in MJLAB_SRC_PATH.parents:
+    candidate = ancestor / _G1_XML_IN_MONOREPO
+    if candidate.is_file():
+      return candidate
+  raise FileNotFoundError(
+    f"G1 MJCF not found: no ancestor of {MJLAB_SRC_PATH} holds {_G1_XML_IN_MONOREPO}. "
+    "This mjlab fork expects to live inside the SimForge monorepo beside JaxRLWorld/."
+  )
+
+
+G1_XML: Path = _find_monorepo_g1_xml()
 
 
 def get_spec() -> mujoco.MjSpec:
