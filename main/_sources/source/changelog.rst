@@ -10,6 +10,9 @@ Added
 
 - Added ``SimulationCfg.graph_conditional`` to toggle MuJoCo Warp's CUDA graph
   conditional nodes, which require CUDA 12.4 or newer.
+- Added ``SimulationCfg.warn_overflow`` to toggle MuJoCo Warp's in-kernel overflow
+  warnings. The print runs inside the captured CUDA graph, so a solver budget that
+  many worlds hit every substep slows the step several-fold until it is silenced.
 
 Changed
 ^^^^^^^

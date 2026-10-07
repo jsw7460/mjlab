@@ -546,6 +546,9 @@ document.write(`
 <ul class="simple">
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">SimulationCfg.graph_conditional</span></code> to toggle MuJoCo Warp’s CUDA graph
 conditional nodes, which require CUDA 12.4 or newer.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">SimulationCfg.warn_overflow</span></code> to toggle MuJoCo Warp’s in-kernel overflow
+warnings. The print runs inside the captured CUDA graph, so a solver budget that
+many worlds hit every substep slows the step several-fold until it is silenced.</p></li>
 </ul>
 </section>
 <section id="changed">
