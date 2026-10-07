@@ -176,6 +176,13 @@ class SimulationCfg:
   worlds converge. Requires CUDA 12.4 or newer.
 
   If None, use the MuJoCo Warp default."""
+  warn_overflow: bool | None = None
+  """Print a warning from the kernels when a world overflows a buffer or
+  exhausts a solver or line-search iteration budget. The print runs inside the
+  captured CUDA graph, so with many worlds hitting a budget it dominates the
+  step time.
+
+  If None, use the MuJoCo Warp default (print every overflow)."""
   ls_parallel: bool | None = None
   """Deprecated and ignored. Parallel linesearch was removed in MuJoCo Warp 3.10."""
   mujoco: MujocoCfg = field(default_factory=MujocoCfg)
@@ -201,6 +208,8 @@ class SimulationCfg:
         wp_opt.broadphase_filter |= _BROADPHASE_FILTER_MAP[name]
     if self.graph_conditional is not None:
       wp_opt.graph_conditional = self.graph_conditional
+    if self.warn_overflow is not None:
+      wp_opt.warn_overflow = int(mjwarp.OverflowType.ALL) if self.warn_overflow else 0
 
 
 class Simulation:

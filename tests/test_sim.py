@@ -50,6 +50,7 @@ def test_simulation_config_is_piped(robot_xml, device):
     contact_sensor_maxmatch=128,
     broadphase="sap_tile",
     broadphase_filter=("plane", "aabb"),
+    warn_overflow=False,
     mujoco=MujocoCfg(
       timestep=0.02,
       integrator="euler",
@@ -92,6 +93,7 @@ def test_simulation_config_is_piped(robot_xml, device):
   assert sim.wp_model.opt.broadphase_filter == (
     mjwarp.BroadphaseFilter.PLANE | mjwarp.BroadphaseFilter.AABB
   )
+  assert sim.wp_model.opt.warn_overflow == 0
 
 
 def test_default_broadphase_keeps_put_model_heuristic(robot_xml, device):
