@@ -58,7 +58,7 @@
     <link rel="prev" title="Research" href="research.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-    <meta name="docbuild:last-update" content="Oct 17, 2026"/>
+    <meta name="docbuild:last-update" content="Nov 07, 2026"/>
   </head>
   
   
@@ -544,6 +544,8 @@ document.write(`
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">GridPatternCfg.offset</span></code> to shift the ray grid in frame-local XY.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GridPatternCfg.resolution</span></code> accepts a per-axis <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y)</span></code> tuple.</p></li>
 <li><p>Added a <code class="docutils literal notranslate"><span class="pre">cu126</span></code> extra (<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span> <span class="pre">--extra</span> <span class="pre">cu126</span></code>) that installs torch built for
 CUDA 12.6, for machines whose NVIDIA driver is older than 580. It does not include
 kernels for Blackwell GPUs.</p></li>
@@ -552,11 +554,31 @@ conditional nodes, which require CUDA 12.4 or newer.</p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">SimulationCfg.warn_overflow</span></code> to toggle MuJoCo Warp’s in-kernel overflow
 warnings. The print runs inside the captured CUDA graph, so a solver budget that
 many worlds hit every substep slows the step several-fold until it is silenced.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RslRlBaseRunnerCfg.logger</span></code> accepts the import path of an
+<code class="docutils literal notranslate"><span class="pre">rsl_rl.utils.LogWriter</span></code> subclass, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;my_pkg.writers:MyLogWriter&quot;</span></code>.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">RewardManager.term_rewards</span></code> and <code class="docutils literal notranslate"><span class="pre">RewardManager.get_term()</span></code> for the
+per-term reward vector from the last step <a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/1223">#1223</a>.</p></li>
+<li><p>Added <code class="docutils literal notranslate"><span class="pre">MjlabOnPolicyRunner.get_export_metadata()</span></code> so custom runners can add
+fields to the exported ONNX metadata by overriding it, and
+<code class="docutils literal notranslate"><span class="pre">MjlabOnPolicyRunner.export_onnx_on_save</span></code> to export ONNX on every checkpoint.
+The velocity, manipulation and tracking runners now share this export path.</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Heightfield terrains now lay hfield rows along y and columns along x, as MuJoCo
+expects. Non-square sub-terrains are no longer stretched with flat patches off the
+terrain; square ones are mirrored across x=y for a given seed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PinholeCameraPatternCfg</span></code> rays now follow MuJoCo’s image layout (row 0 at the top,
+through pixel centers), matching <code class="docutils literal notranslate"><span class="pre">CameraSensor</span></code>. Previously the image was flipped.</p></li>
+<li><p>Bumped <code class="docutils literal notranslate"><span class="pre">mujoco</span></code> and <code class="docutils literal notranslate"><span class="pre">mujoco-warp</span></code> from 3.11 to 3.16 and raised the
+<code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> floor to 1.15.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BuiltinDcMotorActuatorCfg</span></code> PID gains are now in torque space, following
+MuJoCo 3.14. VELOCITY mode requires <code class="docutils literal notranslate"><span class="pre">damping</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> and <code class="docutils literal notranslate"><span class="pre">stiffness</span> <span class="pre">=</span> <span class="pre">0</span></code>, and
+VOLTAGE mode rejects <code class="docutils literal notranslate"><span class="pre">voltage_limit</span></code> and <code class="docutils literal notranslate"><span class="pre">slew_rate</span></code>.</p></li>
+<li><p>Task runners upload exported ONNX policies through the log writer instead of
+<code class="docutils literal notranslate"><span class="pre">wandb.save</span></code>, and name the run in the ONNX metadata after the log directory.</p></li>
 <li><p>Bumped <code class="docutils literal notranslate"><span class="pre">rsl-rl-lib</span></code> from 5.5.0 to 5.5.1. This removes the need for capping
 <code class="docutils literal notranslate"><span class="pre">wandb</span></code> below 0.29.</p></li>
 <li><p>Bumped <code class="docutils literal notranslate"><span class="pre">rsl-rl-lib</span></code> from 5.4.2 to 5.5.0. This update removes the <code class="docutils literal notranslate"><span class="pre">logger_type</span></code>
@@ -567,6 +589,32 @@ attribute of the <code class="docutils literal notranslate"><span class="pre">rs
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">posture</span></code> and <code class="docutils literal notranslate"><span class="pre">variable_posture</span></code> now pair each joint with its own <code class="docutils literal notranslate"><span class="pre">std</span></code> when
+<code class="docutils literal notranslate"><span class="pre">asset_cfg.preserve_order=True</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">apply_body_impulse</span></code> now applies <code class="docutils literal notranslate"><span class="pre">body_point_offset</span></code> in the body frame, as
+documented, instead of the body’s principal inertia frame.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">NoiseModelWithAdditiveBias</span></code> no longer crashes on the first reset when
+<code class="docutils literal notranslate"><span class="pre">bias_noise_cfg</span></code> has per-dimension (tuple) ranges.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">export-scene</span></code> and <code class="docutils literal notranslate"><span class="pre">Scene.write</span></code> once again copy entity mesh files into
+<code class="docutils literal notranslate"><span class="pre">assets/</span></code>. Exporting an asset_zoo robot wrote only <code class="docutils literal notranslate"><span class="pre">scene.xml</span></code>, which then
+failed to load.</p></li>
+<li><p>The cartpole <code class="docutils literal notranslate"><span class="pre">small_control</span></code> reward term now matches dm_control, which reaches 0
+at the control margin (<code class="docutils literal notranslate"><span class="pre">value_at_margin=0</span></code>) instead of 0.1.</p></li>
+<li><p>Partial environment resets now preserve untouched environments’ actuator delay
+histories, lag schedules, and control outputs in both explicit and automatic
+resets <a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/1216">#1216</a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VideoRecorder</span></code> now evaluates <code class="docutils literal notranslate"><span class="pre">episode_trigger</span></code> only at the start of an episode,
+so a recording no longer restarts mid-episode and overwrites the video.</p></li>
+<li><p>String-keyed <code class="docutils literal notranslate"><span class="pre">dr.geom_size</span></code> and isotropic <code class="docutils literal notranslate"><span class="pre">dr.pair_friction</span></code> ranges now
+post-process only the matched geoms and pairs, not the whole <code class="docutils literal notranslate"><span class="pre">asset_cfg</span></code> selection.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">joint_pos=None</span></code> now reads an entity’s own slots of the scene keyframe as float32.
+Previously it read the wrong slots in multi-entity scenes and returned float64.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Entity.write_mocap_pose_to_sim</span></code> no longer crashes with <code class="docutils literal notranslate"><span class="pre">env_ids=None</span></code> when
+there is more than one environment.</p></li>
+<li><p>The tracking <code class="docutils literal notranslate"><span class="pre">evaluate</span></code> script no longer scores each episode’s last step,
+where the robot has already been auto-reset, which inflated the tracking errors.</p></li>
+<li><p>Multi-cube lifting rewards now read the target cube’s current position instead of
+the previous step’s.</p></li>
 <li><p>The viewer now resets recurrent policy hidden state for environments that terminate
 or time out. Previously it only reset the policy when the user pressed the reset
 button, so each auto-reset environment kept the previous episode’s memory <a class="extlink-issue reference external" href="https://github.com/mujocolab/mjlab/issues/1222">#1222</a>.</p></li>
@@ -601,6 +649,9 @@ sharing a lag.</p></li>
 <li><p>Envs sampled by <code class="docutils literal notranslate"><span class="pre">rel_forward_envs</span></code> now keep their straight command. Previously,
 if an env was also sampled as a heading or world frame env, its yaw rate was
 replaced by a heading turn or its velocity by the world frame sample.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MaterialCfg.geom_names_expr</span></code> now assigns the material to all matching unnamed
+geoms. Previously it looked up matched names via <code class="docutils literal notranslate"><span class="pre">spec.geom(name)</span></code>, which always
+returned the first unnamed geom and left any remaining unnamed geoms unchanged.</p></li>
 </ul>
 </section>
 </section>
@@ -1796,7 +1847,7 @@ By The mjlab Developers
   
   <div class="footer-item">
     <p class="last-updated">
-  Last updated on Oct 17, 2026.
+  Last updated on Nov 07, 2026.
   <br/>
 </p>
   </div>
