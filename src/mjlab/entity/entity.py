@@ -722,12 +722,11 @@ class Entity:
     # Joint state.
     if self.is_articulated:
       if self.cfg.init_state.joint_pos is None:
-        # Use keyframe joint positions.
-        key_qpos = mj_model.key("init_state").qpos
-        nq_root = 7 if not self.is_fixed_base else 0
-        default_joint_pos = torch.tensor(key_qpos[nq_root:], device=device)[
-          None
-        ].repeat(nworld, 1)
+        # Use keyframe joint positions. The scene keyframe holds every entity's qpos.
+        key_qpos = torch.tensor(
+          mj_model.key("init_state").qpos, dtype=torch.float, device=device
+        )
+        default_joint_pos = key_qpos[indexing.joint_q_adr][None].repeat(nworld, 1)
       else:
         default_joint_pos = torch.tensor(
           resolve_expr(self.cfg.init_state.joint_pos, self.joint_names, 0.0),
@@ -887,13 +886,16 @@ class Entity:
     )
     self.reset(env_ids)
 
-  def write_data_to_sim(self) -> None:
+  def write_data_to_sim(self, env_ids: torch.Tensor | None = None) -> None:
     """Convert actuator targets into low-level controls and write them to the sim.
 
     Called before each ``sim.step()`` within the decimation loop. Builtin actuators are
     applied in a single batched operation; custom actuators are applied individually.
+
+    Pass ``env_ids`` after a reset to initialize only those environments' controls
+    and backfill their actuator histories without advancing simulation time.
     """
-    self._apply_actuator_controls()
+    self._apply_actuator_controls(env_ids)
 
   def write_ctrl_to_sim(
     self,
@@ -1332,10 +1334,12 @@ class Entity:
       free_joint_v_adr=free_joint_v_adr,
     )
 
-  def _apply_actuator_controls(self) -> None:
-    self._builtin_group.apply_controls(self._data)
-    self._fused_actuator_group.apply_controls(self._data)
+  def _apply_actuator_controls(self, env_ids: torch.Tensor | None = None) -> None:
+    self._builtin_group.apply_controls(self._data, env_ids)
+    self._fused_actuator_group.apply_controls(self._data, env_ids)
+    rows = slice(None) if env_ids is None else env_ids
     for act in self._custom_actuators:
       command = act.get_command(self._data)
+      command.reset_env_ids = env_ids
       command = act.apply_delay(command)
-      self._data.write_ctrl(act.compute(command), act.ctrl_ids)
+      self._data.write_ctrl(act.compute(command)[rows], act.ctrl_ids, env_ids)

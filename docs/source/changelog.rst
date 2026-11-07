@@ -8,6 +8,8 @@ Upcoming version (not yet released)
 Added
 ^^^^^
 
+- Added ``GridPatternCfg.offset`` to shift the ray grid in frame-local XY.
+- ``GridPatternCfg.resolution`` accepts a per-axis ``(x, y)`` tuple.
 - Added a ``cu126`` extra (``uv sync --extra cu126``) that installs torch built for
   CUDA 12.6, for machines whose NVIDIA driver is older than 580. It does not include
   kernels for Blackwell GPUs.
@@ -16,10 +18,30 @@ Added
 - Added ``SimulationCfg.warn_overflow`` to toggle MuJoCo Warp's in-kernel overflow
   warnings. The print runs inside the captured CUDA graph, so a solver budget that
   many worlds hit every substep slows the step several-fold until it is silenced.
+- ``RslRlBaseRunnerCfg.logger`` accepts the import path of an
+  ``rsl_rl.utils.LogWriter`` subclass, e.g. ``"my_pkg.writers:MyLogWriter"``.
+- Added ``RewardManager.term_rewards`` and ``RewardManager.get_term()`` for the
+  per-term reward vector from the last step :issue:`1223`.
+- Added ``MjlabOnPolicyRunner.get_export_metadata()`` so custom runners can add
+  fields to the exported ONNX metadata by overriding it, and
+  ``MjlabOnPolicyRunner.export_onnx_on_save`` to export ONNX on every checkpoint.
+  The velocity, manipulation and tracking runners now share this export path.
 
 Changed
 ^^^^^^^
 
+- Heightfield terrains now lay hfield rows along y and columns along x, as MuJoCo
+  expects. Non-square sub-terrains are no longer stretched with flat patches off the
+  terrain; square ones are mirrored across x=y for a given seed.
+- ``PinholeCameraPatternCfg`` rays now follow MuJoCo's image layout (row 0 at the top,
+  through pixel centers), matching ``CameraSensor``. Previously the image was flipped.
+- Bumped ``mujoco`` and ``mujoco-warp`` from 3.11 to 3.16 and raised the
+  ``warp-lang`` floor to 1.15.
+- ``BuiltinDcMotorActuatorCfg`` PID gains are now in torque space, following
+  MuJoCo 3.14. VELOCITY mode requires ``damping > 0`` and ``stiffness = 0``, and
+  VOLTAGE mode rejects ``voltage_limit`` and ``slew_rate``.
+- Task runners upload exported ONNX policies through the log writer instead of
+  ``wandb.save``, and name the run in the ONNX metadata after the log directory.
 - Bumped ``rsl-rl-lib`` from 5.5.0 to 5.5.1. This removes the need for capping
   ``wandb`` below 0.29.
 
@@ -30,6 +52,32 @@ Changed
 Fixed
 ^^^^^
 
+- ``posture`` and ``variable_posture`` now pair each joint with its own ``std`` when
+  ``asset_cfg.preserve_order=True``.
+- ``apply_body_impulse`` now applies ``body_point_offset`` in the body frame, as
+  documented, instead of the body's principal inertia frame.
+- ``NoiseModelWithAdditiveBias`` no longer crashes on the first reset when
+  ``bias_noise_cfg`` has per-dimension (tuple) ranges.
+- ``export-scene`` and ``Scene.write`` once again copy entity mesh files into
+  ``assets/``. Exporting an asset_zoo robot wrote only ``scene.xml``, which then
+  failed to load.
+- The cartpole ``small_control`` reward term now matches dm_control, which reaches 0
+  at the control margin (``value_at_margin=0``) instead of 0.1.
+- Partial environment resets now preserve untouched environments' actuator delay
+  histories, lag schedules, and control outputs in both explicit and automatic
+  resets :issue:`1216`.
+- ``VideoRecorder`` now evaluates ``episode_trigger`` only at the start of an episode,
+  so a recording no longer restarts mid-episode and overwrites the video.
+- String-keyed ``dr.geom_size`` and isotropic ``dr.pair_friction`` ranges now
+  post-process only the matched geoms and pairs, not the whole ``asset_cfg`` selection.
+- ``joint_pos=None`` now reads an entity's own slots of the scene keyframe as float32.
+  Previously it read the wrong slots in multi-entity scenes and returned float64.
+- ``Entity.write_mocap_pose_to_sim`` no longer crashes with ``env_ids=None`` when
+  there is more than one environment.
+- The tracking ``evaluate`` script no longer scores each episode's last step,
+  where the robot has already been auto-reset, which inflated the tracking errors.
+- Multi-cube lifting rewards now read the target cube's current position instead of
+  the previous step's.
 - The viewer now resets recurrent policy hidden state for environments that terminate
   or time out. Previously it only reset the policy when the user pressed the reset
   button, so each auto-reset environment kept the previous episode's memory :issue:`1222`.
@@ -64,6 +112,9 @@ Fixed
 - Envs sampled by ``rel_forward_envs`` now keep their straight command. Previously,
   if an env was also sampled as a heading or world frame env, its yaw rate was
   replaced by a heading turn or its velocity by the world frame sample.
+- ``MaterialCfg.geom_names_expr`` now assigns the material to all matching unnamed
+  geoms. Previously it looked up matched names via ``spec.geom(name)``, which always
+  returned the first unnamed geom and left any remaining unnamed geoms unchanged.
 
 Version 1.6.0 (August 8, 2026)
 ------------------------------
